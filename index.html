@@ -31,6 +31,7 @@ function fmtSpan(x){let p=[];if(x.y)p.push(`${x.y} year${x.y==1?'':'s'}`);if(x.m
 function totalDays(a,b){return Math.floor((Date.UTC(b.getFullYear(),b.getMonth(),b.getDate())-Date.UTC(a.getFullYear(),a.getMonth(),a.getDate()))/86400000)}
 function fmtDate(s){return d(s).toLocaleDateString(undefined,{month:'long',day:'numeric',year:'numeric'})}
 function nextAnniv(s){let x=d(s),now=new Date(),n=new Date(now.getFullYear(),x.getMonth(),x.getDate());if(n<new Date(now.getFullYear(),now.getMonth(),now.getDate()))n.setFullYear(n.getFullYear()+1);return {date:n,days:totalDays(new Date(now.getFullYear(),now.getMonth(),now.getDate()),n)}}
+function esc(s){return String(s||'').replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]})}
 function card(r){
  let now=new Date(),born=D(r.birth),end=r.death?D(r.death):now,age=spanText(span(born,end)),icon=r.type==='Person'?'♥':'🐾';
  let img=r.photo?'<img class="photo" src="'+r.photo+'" alt="">':'<div class="photo">'+icon+'</div>';
