@@ -4,8 +4,8 @@
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#f7f3ee",
-  "theme_color": "#9c5965",
+  "background_color": "#11131a",
+  "theme_color": "#11131a",
   "description": "A private life and remembrance tracker.",
   "icons": [
     {
