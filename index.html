@@ -33,23 +33,29 @@ function fmtDate(s){return d(s).toLocaleDateString(undefined,{month:'long',day:'
 function nextAnniv(s){let x=d(s),now=new Date(),n=new Date(now.getFullYear(),x.getMonth(),x.getDate());if(n<new Date(now.getFullYear(),now.getMonth(),now.getDate()))n.setFullYear(n.getFullYear()+1);return {date:n,days:totalDays(new Date(now.getFullYear(),now.getMonth(),now.getDate()),n)}}
 function esc(s){return String(s||'').replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]})}
 function card(r){
- let now=new Date(),born=D(r.birth),end=r.death?D(r.death):now,age=spanText(span(born,end)),icon=r.type==='Person'?'♥':'🐾';
+ let now=new Date(),born=d(r.birth),end=r.death?d(r.death):now,age=fmtSpan(ymdBetween(born,end)),icon=r.type==='Person'?'♥':'🐾';
  let img=r.photo?'<img class="photo" src="'+r.photo+'" alt="">':'<div class="photo">'+icon+'</div>';
  let body='';
  if(r.death){
-   let death=D(r.death),days=dayDiff(death,now),until=anniv(r.death);
+   let death=d(r.death),days=totalDays(death,now),a=nextAnniv(r.death);
    body='<div class="counter">We had '+age+' together</div>'+
-        '<div class="counter gone">'+spanText(span(death,now))+' since goodbye</div>'+
-        '<div class="detail">'+days.toLocaleString()+' days remembered • Anniversary: '+death.toLocaleDateString(undefined,{month:"long",day:"numeric"})+' • '+until+' day'+(until===1?'':'s')+' away</div>';
+        '<div class="counter gone">'+fmtSpan(ymdBetween(death,now))+' since goodbye</div>'+
+        '<div class="detail">'+days.toLocaleString()+' days remembered • Anniversary: '+death.toLocaleDateString(undefined,{month:"long",day:"numeric"})+' • '+a.days+' day'+(a.days===1?'':'s')+' away</div>';
  }else{
-   let bd=D(r.birth),until=anniv(r.birth);
+   let bd=d(r.birth),a=nextAnniv(r.birth);
    body='<div class="counter living">'+age+' old today</div>'+
-        '<div class="detail">Next birthday: '+bd.toLocaleDateString(undefined,{month:"long",day:"numeric"})+' • '+until+' day'+(until===1?'':'s')+' away</div>';
+        '<div class="detail">Next birthday: '+bd.toLocaleDateString(undefined,{month:"long",day:"numeric"})+' • '+a.days+' day'+(a.days===1?'':'s')+' away</div>';
  }
  let notes=r.notes?'<div class="notePreview"><strong>Memory:</strong> '+esc(r.notes)+'</div>':'';
- return '<article class="card">'+img+'<div><div class="name">'+esc(r.name)+'</div><div class="meta">Born '+fmt(r.birth)+(r.death?' • Died '+fmt(r.death):'')+'</div>'+(r.relation?'<div class="small">'+esc(r.relation)+'</div>':'')+body+notes+'</div><div class="cardBtns"><button class="editBtn" data-edit="'+r.id+'">✎ Edit</button><button class="delBtn" data-del="'+r.id+'">🗑 Delete</button></div></article>'
+ return '<article class="card">'+img+'<div><div class="name">'+esc(r.name)+'</div><div class="meta">Born '+fmtDate(r.birth)+(r.death?' • Died '+fmtDate(r.death):'')+'</div>'+(r.relation?'<div class="small">'+esc(r.relation)+'</div>':'')+body+notes+'</div><div class="cardControls"><button class="editCard" data-edit="'+r.id+'">✎ Edit</button><button class="deleteCard" data-del="'+r.id+'">🗑 Delete</button></div></article>'
 }
-function render(){let x=records();document.getElementById('living').innerHTML=x.filter(r=>!r.death).map(card).join('')||'<div class="empty">No living entries yet.</div>';document.getElementById('remembered').innerHTML=x.filter(r=>r.death).map(card).join('')||'<div class="empty">No remembered entries yet.</div>'}
+function render(){
+ let x=records();
+ document.getElementById('living').innerHTML=x.filter(r=>!r.death).map(card).join('')||'<div class="empty">No living entries yet.</div>';
+ document.getElementById('remembered').innerHTML=x.filter(r=>r.death).map(card).join('')||'<div class="empty">No remembered entries yet.</div>';
+ document.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>openEditor(b.dataset.edit));
+ document.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>deleteDirect(b.dataset.del));
+}
 function openEditor(id=null){editId=id;pendingPhoto=null;let r=id?records().find(x=>x.id===id):{name:'',type:'Pupper',birth:'',death:'',relation:'',notes:'',photo:''};['name','type','birth','death','relation','notes'].forEach(k=>document.getElementById(k).value=r[k]||'');document.getElementById('editTitle').textContent=id?'Edit '+r.name:'Add Someone';document.getElementById('deleteBtn').style.display=id?'block':'none';document.getElementById('photo').value='';document.getElementById('modal').style.display='flex'}
 function closeEditor(){document.getElementById('modal').style.display='none'}
 function resizePhoto(file){return new Promise((resolve,reject)=>{let rd=new FileReader();rd.onerror=reject;rd.onload=()=>{let img=new Image();img.onerror=reject;img.onload=()=>{let max=720,scale=Math.min(1,max/Math.max(img.width,img.height)),c=document.createElement('canvas');c.width=Math.round(img.width*scale);c.height=Math.round(img.height*scale);c.getContext('2d').drawImage(img,0,0,c.width,c.height);resolve(c.toDataURL('image/jpeg',.72))};img.src=rd.result};rd.readAsDataURL(file)})}
