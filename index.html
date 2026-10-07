@@ -22,7 +22,22 @@ const seed=[
 {id:'fred',name:'Fred',type:'Pupper',birth:'2020-12-09',death:'2026-06-29',relation:'George’s littermate',notes:'',photo:''},
 {id:'george',name:'George',type:'Pupper',birth:'2020-12-09',death:'',relation:'Fred’s littermate',notes:'',photo:''}
 ];
-function records(){try{let x=JSON.parse(localStorage.getItem(KEY));return Array.isArray(x)?x:seed}catch{return seed}}
+
+function normalizeRecord(raw){
+ raw=raw||{};
+ return {
+   id:String(raw.id||('r'+Date.now()+Math.random())),
+   name:String(raw.name||'Unnamed'),
+   type:String(raw.type||raw.kind||'Pupper'),
+   birth:String(raw.birth||raw.born||''),
+   death:String(raw.death||raw.died||''),
+   relation:String(raw.relation||raw.relationship||''),
+   notes:String(raw.notes||''),
+   photo:String(raw.photo||'')
+ };
+}
+
+function records(){try{let x=JSON.parse(localStorage.getItem(KEY));if(!Array.isArray(x))x=seed;return x.map(normalizeRecord)}catch(e){return seed.map(normalizeRecord)}}
 function store(x){try{localStorage.setItem(KEY,JSON.stringify(x));render();return true}catch(e){alert('The browser could not save this entry. The photo may be too large.');return false}}
 if(!localStorage.getItem(KEY)) store(seed);
 function d(s){let [y,m,dd]=s.split('-').map(Number);return new Date(y,m-1,dd)}
@@ -33,28 +48,40 @@ function fmtDate(s){return d(s).toLocaleDateString(undefined,{month:'long',day:'
 function nextAnniv(s){let x=d(s),now=new Date(),n=new Date(now.getFullYear(),x.getMonth(),x.getDate());if(n<new Date(now.getFullYear(),now.getMonth(),now.getDate()))n.setFullYear(n.getFullYear()+1);return {date:n,days:totalDays(new Date(now.getFullYear(),now.getMonth(),now.getDate()),n)}}
 function esc(s){return String(s||'').replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]})}
 function card(r){
- let now=new Date(),born=d(r.birth),end=r.death?d(r.death):now,age=fmtSpan(ymdBetween(born,end)),icon=r.type==='Person'?'♥':'🐾';
- let img=r.photo?'<img class="photo" src="'+r.photo+'" alt="">':'<div class="photo">'+icon+'</div>';
- let body='';
- if(r.death){
-   let death=d(r.death),days=totalDays(death,now),a=nextAnniv(r.death);
-   body='<div class="counter">We had '+age+' together</div>'+
-        '<div class="counter gone">'+fmtSpan(ymdBetween(death,now))+' since goodbye</div>'+
-        '<div class="detail">'+days.toLocaleString()+' days remembered • Anniversary: '+death.toLocaleDateString(undefined,{month:"long",day:"numeric"})+' • '+a.days+' day'+(a.days===1?'':'s')+' away</div>';
- }else{
-   let bd=d(r.birth),a=nextAnniv(r.birth);
-   body='<div class="counter living">'+age+' old today</div>'+
-        '<div class="detail">Next birthday: '+bd.toLocaleDateString(undefined,{month:"long",day:"numeric"})+' • '+a.days+' day'+(a.days===1?'':'s')+' away</div>';
+ try{
+  r=normalizeRecord(r);
+  let now=new Date(),icon=r.type==='Person'?'♥':'🐾';
+  let img=r.photo?'<img class="photo" src="'+r.photo+'" alt="">':'<div class="photo">'+icon+'</div>';
+  let born=r.birth?d(r.birth):null, body='';
+  if(r.death){
+    let death=d(r.death);
+    if(born) body+='<div class="counter">We had '+fmtSpan(ymdBetween(born,death))+' together</div>';
+    body+='<div class="counter gone">'+fmtSpan(ymdBetween(death,now))+' since goodbye</div>';
+    let a=nextAnniv(r.death);
+    body+='<div class="detail">'+totalDays(death,now).toLocaleString()+' days remembered • Anniversary: '+death.toLocaleDateString(undefined,{month:"long",day:"numeric"})+' • '+a.days+' day'+(a.days===1?'':'s')+' away</div>';
+  }else if(born){
+    let a=nextAnniv(r.birth);
+    body='<div class="counter living">'+fmtSpan(ymdBetween(born,now))+' old today</div><div class="detail">Next birthday: '+born.toLocaleDateString(undefined,{month:"long",day:"numeric"})+' • '+a.days+' day'+(a.days===1?'':'s')+' away</div>';
+  }
+  let dates=r.birth?'Born '+fmtDate(r.birth):'Birthday unknown';
+  if(r.death) dates+=' • Died '+fmtDate(r.death);
+  let notes=r.notes?'<div class="notePreview"><strong>Memory:</strong> '+esc(r.notes)+'</div>':'';
+  return '<article class="card">'+img+'<div><div class="name">'+esc(r.name)+'</div><div class="meta">'+dates+'</div>'+(r.relation?'<div class="small">'+esc(r.relation)+'</div>':'')+body+notes+'</div><div class="cardControls"><button class="editCard" data-edit="'+esc(r.id)+'">✎ Edit</button><button class="deleteCard" data-del="'+esc(r.id)+'">🗑 Delete</button></div></article>';
+ }catch(e){
+  return '<article class="card"><div class="photo">?</div><div><div class="name">'+esc((r&&r.name)||'Entry')+'</div><div class="gone">This entry needs repair. Tap Edit.</div></div><div class="cardControls"><button class="editCard" data-edit="'+esc((r&&r.id)||'')+'">✎ Edit</button></div></article>';
  }
- let notes=r.notes?'<div class="notePreview"><strong>Memory:</strong> '+esc(r.notes)+'</div>':'';
- return '<article class="card">'+img+'<div><div class="name">'+esc(r.name)+'</div><div class="meta">Born '+fmtDate(r.birth)+(r.death?' • Died '+fmtDate(r.death):'')+'</div>'+(r.relation?'<div class="small">'+esc(r.relation)+'</div>':'')+body+notes+'</div><div class="cardControls"><button class="editCard" data-edit="'+r.id+'">✎ Edit</button><button class="deleteCard" data-del="'+r.id+'">🗑 Delete</button></div></article>'
 }
 function render(){
- let x=records();
- document.getElementById('living').innerHTML=x.filter(r=>!r.death).map(card).join('')||'<div class="empty">No living entries yet.</div>';
- document.getElementById('remembered').innerHTML=x.filter(r=>r.death).map(card).join('')||'<div class="empty">No remembered entries yet.</div>';
- document.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>openEditor(b.dataset.edit));
- document.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>deleteDirect(b.dataset.del));
+ try{
+  let x=records();
+  document.getElementById('living').innerHTML=x.filter(r=>!r.death).map(card).join('')||'<div class="empty">No living entries yet.</div>';
+  document.getElementById('remembered').innerHTML=x.filter(r=>!!r.death).map(card).join('')||'<div class="empty">No remembered entries yet.</div>';
+  document.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>openEditor(b.dataset.edit));
+  document.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>deleteDirect(b.dataset.del));
+ }catch(e){
+  document.getElementById('living').innerHTML='<div class="empty">The entries could not be displayed. Your saved data has not been deleted.</div>';
+  document.getElementById('remembered').innerHTML='';
+ }
 }
 function openEditor(id=null){editId=id;pendingPhoto=null;let r=id?records().find(x=>x.id===id):{name:'',type:'Pupper',birth:'',death:'',relation:'',notes:'',photo:''};['name','type','birth','death','relation','notes'].forEach(k=>document.getElementById(k).value=r[k]||'');document.getElementById('editTitle').textContent=id?'Edit '+r.name:'Add Someone';document.getElementById('deleteBtn').style.display=id?'block':'none';document.getElementById('photo').value='';document.getElementById('modal').style.display='flex'}
 function closeEditor(){document.getElementById('modal').style.display='none'}
