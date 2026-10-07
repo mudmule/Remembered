@@ -31,7 +31,23 @@ function fmtSpan(x){let p=[];if(x.y)p.push(`${x.y} year${x.y==1?'':'s'}`);if(x.m
 function totalDays(a,b){return Math.floor((Date.UTC(b.getFullYear(),b.getMonth(),b.getDate())-Date.UTC(a.getFullYear(),a.getMonth(),a.getDate()))/86400000)}
 function fmtDate(s){return d(s).toLocaleDateString(undefined,{month:'long',day:'numeric',year:'numeric'})}
 function nextAnniv(s){let x=d(s),now=new Date(),n=new Date(now.getFullYear(),x.getMonth(),x.getDate());if(n<new Date(now.getFullYear(),now.getMonth(),now.getDate()))n.setFullYear(n.getFullYear()+1);return {date:n,days:totalDays(new Date(now.getFullYear(),now.getMonth(),now.getDate()),n)}}
-function card(r){let now=new Date(), born=d(r.birth), end=r.death?d(r.death):now;let age=fmtSpan(ymdBetween(born,end));let icon=r.type==='Person'?'♥':'🐾';let img=r.photo?`<img class="photo" src="${r.photo}">`:`<div class="photo">${icon}</div>`;let body='';if(r.death){let since=fmtSpan(ymdBetween(d(r.death),now)), days=totalDays(d(r.death),now),ann=nextAnniv(r.death);body=`<div class="counter">We had ${age} together</div><div class="counter gone">${since} since goodbye</div><div class="detail">${days.toLocaleString()} days remembered • Next remembrance: ${ann.days} day${ann.days==1?'':'s'}</div>`}else{let bd=nextAnniv(r.birth);body=`<div class="counter living">${age} old today</div><div class="detail">Next birthday: ${bd.days} day${bd.days==1?'':'s'}</div>`}return `<article class="card">${img}<div onclick="openEditor('${r.id}')"><div class="name">${r.name}</div><div class="meta">Born ${fmtDate(r.birth)}${r.death?' • '+fmtDate(r.death):''}</div>${r.relation?`<div class="small">${r.relation}</div>`:''}${body}</div><div class="cardControls"><button class="editCard" onclick="event.stopPropagation();openEditor('${r.id}')">✎ Edit</button><button class="deleteCard" onclick="event.stopPropagation();deleteDirect('${r.id}')">🗑 Delete</button></div></article>`}
+function card(r){
+ let now=new Date(),born=D(r.birth),end=r.death?D(r.death):now,age=spanText(span(born,end)),icon=r.type==='Person'?'♥':'🐾';
+ let img=r.photo?'<img class="photo" src="'+r.photo+'" alt="">':'<div class="photo">'+icon+'</div>';
+ let body='';
+ if(r.death){
+   let death=D(r.death),days=dayDiff(death,now),until=anniv(r.death);
+   body='<div class="counter">We had '+age+' together</div>'+
+        '<div class="counter gone">'+spanText(span(death,now))+' since goodbye</div>'+
+        '<div class="detail">'+days.toLocaleString()+' days remembered • Anniversary: '+death.toLocaleDateString(undefined,{month:"long",day:"numeric"})+' • '+until+' day'+(until===1?'':'s')+' away</div>';
+ }else{
+   let bd=D(r.birth),until=anniv(r.birth);
+   body='<div class="counter living">'+age+' old today</div>'+
+        '<div class="detail">Next birthday: '+bd.toLocaleDateString(undefined,{month:"long",day:"numeric"})+' • '+until+' day'+(until===1?'':'s')+' away</div>';
+ }
+ let notes=r.notes?'<div class="notePreview"><strong>Memory:</strong> '+esc(r.notes)+'</div>':'';
+ return '<article class="card">'+img+'<div><div class="name">'+esc(r.name)+'</div><div class="meta">Born '+fmt(r.birth)+(r.death?' • Died '+fmt(r.death):'')+'</div>'+(r.relation?'<div class="small">'+esc(r.relation)+'</div>':'')+body+notes+'</div><div class="cardBtns"><button class="editBtn" data-edit="'+r.id+'">✎ Edit</button><button class="delBtn" data-del="'+r.id+'">🗑 Delete</button></div></article>'
+}
 function render(){let x=records();document.getElementById('living').innerHTML=x.filter(r=>!r.death).map(card).join('')||'<div class="empty">No living entries yet.</div>';document.getElementById('remembered').innerHTML=x.filter(r=>r.death).map(card).join('')||'<div class="empty">No remembered entries yet.</div>'}
 function openEditor(id=null){editId=id;pendingPhoto=null;let r=id?records().find(x=>x.id===id):{name:'',type:'Pupper',birth:'',death:'',relation:'',notes:'',photo:''};['name','type','birth','death','relation','notes'].forEach(k=>document.getElementById(k).value=r[k]||'');document.getElementById('editTitle').textContent=id?'Edit '+r.name:'Add Someone';document.getElementById('deleteBtn').style.display=id?'block':'none';document.getElementById('photo').value='';document.getElementById('modal').style.display='flex'}
 function closeEditor(){document.getElementById('modal').style.display='none'}
